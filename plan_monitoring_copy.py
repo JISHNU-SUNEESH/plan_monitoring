@@ -4,147 +4,105 @@ import pandas as pd
 from io import StringIO
 import os
 from dotenv import load_dotenv
-# import tasks
-from datetime import datetime, timedelta
+from datetime import datetime
 import streamlit as st
+
+# Load environment variables (only used locally)
 load_dotenv()
 
-access_token=st.secrets["talend_api_token"]
-region="eu"
+# Secrets from Streamlit Cloud or local secrets.toml
+access_token = st.secrets["talend_api_token"]
+region = "eu"
+
+# ------------------------- API FUNCTIONS ------------------------- #
 def get_plans_name_df():
-    
-    plans_name_url=f"https://api.{region}.cloud.talend.com/orchestration/executables/plans/"
-
-    headers={
+    plans_name_url = f"https://api.{region}.cloud.talend.com/orchestration/executables/plans/"
+    headers = {
         'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json'
-
     }
-
-    response=requests.get(plans_name_url, headers=headers)
-    if response.status_code == 200:
-        plans = response.json()
-        print("Plans retrieved successfully.")
-
-    df_pl_name=pd.read_json(StringIO(json.dumps(plans)))
-    plans_name=dict(df_pl_name["items"])
-
-    lst_pln_name=[]
-    for key,value in plans_name.items():
-        lst_pln_name.append(value)
-
-    df_plan_names=pd.DataFrame(lst_pln_name)
-    # df_plan_names=df_plan_names[['executable','name']]
-    # df_plan_names.rename(columns={"executable":"planId"},inplace=True)
-
-    df_plan_names=df_plan_names[['executable','name','workspace']]
-    df_plan_names.rename(columns={"executable":"planId","workspace":"env"},inplace=True)
-    df_plan_names['env']=df_plan_names['env'].apply((lambda x:x['environment'])).apply(lambda x: x['name'])
-
+    response = requests.get(plans_name_url, headers=headers)
+    plans = response.json() if response.status_code == 200 else {}
+    df_pl_name = pd.read_json(StringIO(json.dumps(plans)))
+    plans_name = dict(df_pl_name["items"])
+    lst_pln_name = [value for key, value in plans_name.items()]
+    df_plan_names = pd.DataFrame(lst_pln_name)
+    df_plan_names = df_plan_names[['executable', 'name', 'workspace']]
+    df_plan_names.rename(columns={"executable": "planId", "workspace": "env"}, inplace=True)
+    df_plan_names['env'] = df_plan_names['env'].apply(lambda x: x['environment']['name'])
     return df_plan_names
-    
+
 def get_plan_status():
-    # plans_execution_url=f"https://api.{region}.cloud.talend.com/processing/executables/plans/executions"
-
-    # headers={
-    #     'Authorization': f'Bearer {access_token}',
-    #     'Content-Type': 'application/json'
-
-    # }
-
-    # response=requests.get(plans_execution_url, headers=headers)
-    # if response.status_code == 200:
-    #     plans = response.json()
-    #     print("Plans retrieved successfully.")
-
-    # df=pd.read_json(StringIO(json.dumps(plans)))
-    # plans_dict=dict(df["items"])
-    # lst_pln_id=[]
-    # for key,value in plans_dict.items():
-    #     lst_pln_id.append(value)
-    
-    limit=100
-    offset=0
-    all_plans_exec=[]
+    limit = 100
+    offset = 0
+    all_plans_exec = []
     while True:
-        params={
-            'limit':limit,
-            'offset':offset,
-            "lastDays": "7"
+        params = {'limit': limit, 'offset': offset, "lastDays": "7"}
+        plans_execution_url = f"https://api.{region}.cloud.talend.com/processing/executables/plans/executions"
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
         }
-        plans_execution_url=f"https://api.{region}.cloud.talend.com/processing/executables/plans/executions"
-
-        headers={
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-
-         }
-        response=requests.get(plans_execution_url, headers=headers,params=params)
-        data=response.json()
-        items=data.get("items")
+        response = requests.get(plans_execution_url, headers=headers, params=params)
+        data = response.json()
+        items = data.get("items")
         if not items:
-                break
+            break
         all_plans_exec.extend(items)
-        offset+=limit   
-    
-    plan_execution=pd.DataFrame(all_plans_exec)
-    return plan_execution
+        offset += limit
+    return pd.DataFrame(all_plans_exec)
 
 def get_agg_table():
-    plan_execution=get_plan_status()
-    df_plan_names=get_plans_name_df()
-    df_inner=pd.merge(df_plan_names,plan_execution,on="planId",how="left")
-    return df_inner
+    return pd.merge(get_plans_name_df(), get_plan_status(), on="planId", how="left")
 
 def get_edw_plan_status():
+    df = get_agg_table()
+    df['startTimestamp'] = pd.to_datetime(df['startTimestamp'])
+    df['finishTimestamp'] = pd.to_datetime(df['finishTimestamp'])
+    df = df.sort_values(by='finishTimestamp').drop_duplicates(subset=['name', 'planId'], keep='last')
+    return df
 
-    df_inner=get_agg_table()
-    df_inner['startTimestamp']=pd.to_datetime(df_inner['startTimestamp'])
-    df_inner['finishTimestamp']=pd.to_datetime(df_inner['finishTimestamp'])
-    # df_inner=df_inner[df_inner['planId']!='8cad702c-aea3-44c1-b786-ac68d92d5244']
-    edw_plan_latest=df_inner.sort_values(by='finishTimestamp').drop_duplicates(subset=['name','planId'],keep='last')
-    return edw_plan_latest
-
-
-
-
+# ------------------------- MAIN APP ------------------------- #
 def main():
-    st.header("Plan Monitoring")
+    st.set_page_config("Talend Plan Monitor", layout="wide")
+    st.title("🚀 Talend Plan Monitoring Dashboard")
 
+    # Initialize session state
     if "edw_plan_status" not in st.session_state:
         st.session_state.edw_plan_status = None
         st.session_state.last_refreshed = None
 
-    refresh = st.button("Refresh")
-
-    # Fetch data if refresh is clicked or it's the first load
-    if refresh or st.session_state.edw_plan_status is None:
-        with st.spinner("Fetching plan details..."):
-            edw_plan_status = get_edw_plan_status()
-            st.session_state.edw_plan_status = edw_plan_status
-            st.session_state.last_refreshed = datetime.now()
-
-    edw_plan_status = st.session_state.edw_plan_status
-
-    if edw_plan_status is not None:
-        # Show "Last refreshed" time
+    # Refresh button
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        refresh = st.button("🔄 Refresh")
+    with col2:
         if st.session_state.last_refreshed:
             elapsed = datetime.now() - st.session_state.last_refreshed
             minutes = int(elapsed.total_seconds() // 60)
             seconds = int(elapsed.total_seconds() % 60)
+            time_str = f"{minutes} min {seconds} sec" if minutes else f"{seconds} sec"
+            st.caption(f"🕒 Last refreshed {time_str} ago")
 
-            if minutes > 0:
-                st.caption(f"Last refreshed {minutes} min {seconds} sec ago")
-            else:
-                st.caption(f"Last refreshed {seconds} sec ago")
+    # Fetch data
+    if refresh or st.session_state.edw_plan_status is None:
+        with st.spinner("Fetching plan details..."):
+            st.session_state.edw_plan_status = get_edw_plan_status()
+            st.session_state.last_refreshed = datetime.now()
 
-        st.dataframe(
-            edw_plan_status[edw_plan_status['env'] == 'ENV_PRD'][['name', 'status']]
-            .dropna()
-            .reset_index(drop=True)
-        )
+    df = st.session_state.edw_plan_status
+    df_filtered = df[df['env'] == 'ENV_PRD'][['name', 'status']].dropna().reset_index(drop=True)
 
+    # Display styled dataframe
+    def style_status(val):
+        color = "green" if val == "SUCCEEDED" else "orange" if val == "RUNNING" else "red"
+        return f"color: white; background-color: {color}; font-weight: bold; text-align: center"
 
+    st.subheader("✅ ENV_PRD Plan Status")
+    st.dataframe(
+        df_filtered.style.applymap(style_status, subset=['status']),
+        use_container_width=True
+    )
 
 if __name__ == "__main__":
     main()
