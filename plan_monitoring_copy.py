@@ -4,7 +4,7 @@ import pandas as pd
 from io import StringIO
 import os
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime
 import streamlit as st
 
 # Load environment variables (only used locally)
@@ -65,7 +65,7 @@ def get_edw_plan_status():
 # ------------------------- MAIN APP ------------------------- #
 def main():
     st.set_page_config("Talend Plan Monitor", layout="wide")
-    st.title("🚀 Talend Plan Monitoring Dashboard")
+    st.title("Talend Plan Monitoring Dashboard")
 
     # Initialize session state
     if "edw_plan_status" not in st.session_state:
@@ -77,19 +77,23 @@ def main():
     with col1:
         refresh = st.button("🔄 Refresh")
     with col2:
-        last_refresh_placeholder = st.empty()  # Placeholder for "Last refreshed"
+        if st.session_state.last_refreshed:
+            elapsed = datetime.now() - st.session_state.last_refreshed
+            minutes = int(elapsed.total_seconds() // 60)
+            seconds = int(elapsed.total_seconds() % 60)
+            time_str = f"{minutes} min {seconds} sec" if minutes else f"{seconds} sec"
+            st.caption(f"🕒 Last refreshed {time_str} ago")
 
-    # Fetch data when the app first runs or after refresh
+    # Fetch data
     if refresh or st.session_state.edw_plan_status is None:
         with st.spinner("Fetching plan details..."):
             st.session_state.edw_plan_status = get_edw_plan_status()
             st.session_state.last_refreshed = datetime.now()
 
-    # Get the refreshed data
     df = st.session_state.edw_plan_status
     df_filtered = df[df['env'] == 'ENV_PRD'][['name', 'status']].dropna().reset_index(drop=True)
 
-    # Display the data
+    # Display styled dataframe with color logic
     def style_df(df):
         def style_status(val):
             status = str(val).strip().lower()
@@ -112,17 +116,6 @@ def main():
         style_df(df_filtered),
         use_container_width=True
     )
-
-    # Real-time "Last refreshed" display (without refresh click)
-    while True:
-        if st.session_state.last_refreshed:
-            elapsed = datetime.now() - st.session_state.last_refreshed
-            minutes = int(elapsed.total_seconds() // 60)
-            seconds = int(elapsed.total_seconds() % 60)
-            time_str = f"{minutes} min {seconds} sec" if minutes else f"{seconds} sec"
-            last_refresh_placeholder.markdown(f"🕒 Last refreshed {time_str} ago")
-        st.time.sleep(1)  # Wait for 1 second before updating the display again
-
 
 if __name__ == "__main__":
     main()
