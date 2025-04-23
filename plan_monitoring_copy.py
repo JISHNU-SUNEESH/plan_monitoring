@@ -78,7 +78,7 @@ def main():
         refresh = st.button("🔄 Refresh")
     with col2:
         if st.session_state.last_refreshed:
-            while true:
+            while True:
                 elapsed = datetime.now() - st.session_state.last_refreshed
                 minutes = int(elapsed.total_seconds() // 60)
                 seconds = int(elapsed.total_seconds() % 60)
