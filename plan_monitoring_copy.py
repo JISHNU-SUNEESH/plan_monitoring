@@ -105,7 +105,7 @@ def main():
                 return "background-color: #d1ecf1; color: #0c5460; font-weight: bold; text-align: center"
 
         def style_name(val):
-            return "background-color: #f1f1f1; font-weight: 600; text-align: left"
+            return "background-color: #f5f5f5; color: #333333; font-weight: 600; text-align: left"
 
         styled = df.style.applymap(style_status, subset=['status'])
         styled = styled.applymap(style_name, subset=['name'])
