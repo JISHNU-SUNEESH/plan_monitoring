@@ -93,14 +93,27 @@ def main():
     df = st.session_state.edw_plan_status
     df_filtered = df[df['env'] == 'ENV_PRD'][['name', 'status']].dropna().reset_index(drop=True)
 
-    # Display styled dataframe
-    def style_status(val):
-        color = "green" if val == "SUCCEEDED" else "orange" if val == "RUNNING" else "red"
-        return f"color: white; background-color: {color}; font-weight: bold; text-align: center"
+    # Display styled dataframe with color logic
+    def style_df(df):
+        def style_status(val):
+            status = str(val).strip().lower()
+            if status == "execution_successful":
+                return "background-color: #d4edda; color: #155724; font-weight: bold; text-align: center"
+            elif status == "execution_failed":
+                return "background-color: #f8d7da; color: #721c24; font-weight: bold; text-align: center"
+            else:
+                return "background-color: #d1ecf1; color: #0c5460; font-weight: bold; text-align: center"
+
+        def style_name(val):
+            return "background-color: #f1f1f1; font-weight: 600; text-align: left"
+
+        styled = df.style.applymap(style_status, subset=['status'])
+        styled = styled.applymap(style_name, subset=['name'])
+        return styled
 
     st.subheader("✅ ENV_PRD Plan Status")
     st.dataframe(
-        df_filtered.style.applymap(style_status, subset=['status']),
+        style_df(df_filtered),
         use_container_width=True
     )
 
