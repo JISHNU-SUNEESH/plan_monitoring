@@ -107,22 +107,39 @@ def get_edw_plan_status():
 
 
 def main():
+import streamlit as st
+from datetime import datetime, timedelta
+
+def main():
     st.header("Plan Monitoring")
 
     if "edw_plan_status" not in st.session_state:
         st.session_state.edw_plan_status = None
+        st.session_state.last_refreshed = None
 
     refresh = st.button("Refresh")
 
+    # Fetch data if refresh is clicked or it's the first load
     if refresh or st.session_state.edw_plan_status is None:
         with st.spinner("Fetching plan details..."):
             edw_plan_status = get_edw_plan_status()
             st.session_state.edw_plan_status = edw_plan_status
-            st.success("Data refreshed.")
+            st.session_state.last_refreshed = datetime.now()
 
     edw_plan_status = st.session_state.edw_plan_status
 
     if edw_plan_status is not None:
+        # Show "Last refreshed" time
+        if st.session_state.last_refreshed:
+            elapsed = datetime.now() - st.session_state.last_refreshed
+            minutes = int(elapsed.total_seconds() // 60)
+            seconds = int(elapsed.total_seconds() % 60)
+
+            if minutes > 0:
+                st.caption(f"Last refreshed {minutes} min {seconds} sec ago")
+            else:
+                st.caption(f"Last refreshed {seconds} sec ago")
+
         st.dataframe(
             edw_plan_status[edw_plan_status['env'] == 'ENV_PRD'][['name', 'status']]
             .dropna()
