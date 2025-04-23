@@ -113,7 +113,6 @@ def main():
         styled = styled.applymap(style_name, subset=['name'])
         return styled
 
-    st.subheader("✅ ENV_PRD Plan Status")
     st.dataframe(
         style_df(df_filtered),
         use_container_width=True
