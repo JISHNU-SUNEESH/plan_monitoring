@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 import streamlit as st
 load_dotenv()
 
-access_token=os.getenv("talend_api_token")
-region="eu"
+access_token=st.secrets["talend_api_token"]
 
 def get_plans_name_df():
     
