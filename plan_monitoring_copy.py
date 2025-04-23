@@ -73,7 +73,7 @@ def main():
         st.session_state.last_refreshed = None
 
     # Refresh button
-    col1, col2, col3 = st.columns([1,1,2])
+    col1, col2, col3 = st.columns([1,3,2])
     with col1:
         refresh = st.button("🔄 Refresh")
     with col2:
