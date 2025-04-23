@@ -105,36 +105,30 @@ def get_edw_plan_status():
     return edw_plan_latest
 
 
-def main():
-    header=st.header("Plan Monitoring")
-    print("Fetching plan details...")
-    edw_plan_status=get_edw_plan_status()
-    print(edw_plan_status[['name','status','env']])
-    # edw_task_status=tasks.get_task_status()
-    # filtered=edw_task_status.sort_values(by="finishTimestamp").drop_duplicates(subset=["taskId","name"], keep="last")
-    # # filtered.to_csv("task_execution.csv", index=False)
-    # print("Fetched plan details...")
-    # print(edw_plan_status)
-    # merged_df=edw_plan_status.merge(filtered, on="planId", how="left")
-    # merged_df.rename(columns={"name_x":"planName","name_y":"taskName","status_x":"plan_status"}, inplace=True)
-    # edw_plan_status.to_csv('c:\Talend\edw_plan_status.csv', index=False)
-    refresh=st.button("Refresh")
-    if refresh:
-        edw_plan_status=get_edw_plan_status()
-        print(edw_plan_status)
-        # edw_task_status=tasks.get_task_status()
-        # filtered=edw_task_status.sort_values(by="finishTimestamp").drop_duplicates(subset=["taskId","name"], keep="last")
-        # merged_df=edw_plan_status.merge(filtered, on="planId", how="left")
-        # merged_df.rename(columns={"name_x":"planName","name_y":"taskName","status_x":"plan_status"}, inplace=True)
-        # # filtered.to_csv("task_execution.csv", index=False)
-        print("Fetched plan details...")
-        print(edw_plan_status[['name','status','env']])
-        st.dataframe(edw_plan_status.where(edw_plan_status['env']=='ENV_PRD')[['name','status']].dropna().reset_index(drop=True))
-        # edw_plan_status.to_csv('c:\Talend\edw_plan_status.csv', index=False)
 
-    st.dataframe(edw_plan_status.where(edw_plan_status['env']=='ENV_PRD')[['name','status']].dropna().reset_index(drop=True))
-        # st.dataframe(filtered)
-    print("CSV files saved successfully.")
+def main():
+    st.header("Plan Monitoring")
+
+    if "edw_plan_status" not in st.session_state:
+        st.session_state.edw_plan_status = None
+
+    refresh = st.button("Refresh")
+
+    if refresh or st.session_state.edw_plan_status is None:
+        with st.spinner("Fetching plan details..."):
+            edw_plan_status = get_edw_plan_status()
+            st.session_state.edw_plan_status = edw_plan_status
+            st.success("Data refreshed.")
+
+    edw_plan_status = st.session_state.edw_plan_status
+
+    if edw_plan_status is not None:
+        st.dataframe(
+            edw_plan_status[edw_plan_status['env'] == 'ENV_PRD'][['name', 'status']]
+            .dropna()
+            .reset_index(drop=True)
+        )
+
 
 
 if __name__ == "__main__":
