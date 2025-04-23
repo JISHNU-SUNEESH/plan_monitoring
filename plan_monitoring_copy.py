@@ -106,9 +106,6 @@ def get_edw_plan_status():
 
 
 
-def main():
-import streamlit as st
-from datetime import datetime, timedelta
 
 def main():
     st.header("Plan Monitoring")
