@@ -78,11 +78,12 @@ def main():
         refresh = st.button("🔄 Refresh")
     with col2:
         if st.session_state.last_refreshed:
-            elapsed = datetime.now() - st.session_state.last_refreshed
-            minutes = int(elapsed.total_seconds() // 60)
-            seconds = int(elapsed.total_seconds() % 60)
-            time_str = f"{minutes} min {seconds} sec" if minutes else f"{seconds} sec"
-            st.caption(f"🕒 Last refreshed {time_str} ago")
+            while true:
+                elapsed = datetime.now() - st.session_state.last_refreshed
+                minutes = int(elapsed.total_seconds() // 60)
+                seconds = int(elapsed.total_seconds() % 60)
+                time_str = f"{minutes} min {seconds} sec" if minutes else f"{seconds} sec"
+                st.caption(f"🕒 Last refreshed {time_str} ago")
 
     # Fetch data
     if refresh or st.session_state.edw_plan_status is None:
