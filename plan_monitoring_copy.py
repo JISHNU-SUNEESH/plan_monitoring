@@ -9,7 +9,7 @@ import streamlit as st
 load_dotenv()
 
 access_token=st.secrets["talend_api_token"]
-
+region="eu"
 def get_plans_name_df():
     
     plans_name_url=f"https://api.{region}.cloud.talend.com/orchestration/executables/plans/"
