@@ -84,7 +84,7 @@ def main():
             minutes = int(elapsed.total_seconds() // 60)
             seconds = int(elapsed.total_seconds() % 60)
             time_str = f"{minutes} min {seconds} sec" if minutes else f"{seconds} sec"
-            st.caption(f"Last refreshed {time_str} ago")
+            st.warning(f"Last refreshed {time_str} ago")
 
     # Fetch data
     if refresh or st.session_state.edw_plan_status is None:
